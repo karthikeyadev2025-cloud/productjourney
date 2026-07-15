@@ -32,8 +32,8 @@ async function loadConfig(store) {
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     supabaseUrl:  process.env.SUPABASE_URL || '',
     supabaseKey:  process.env.SUPABASE_SERVICE_KEY || '',
-    textModel:    'gemini-2.5-flash',
-    imageModel:   'gemini-2.5-flash-image',
+    textModel:    'gemini-3.5-flash',
+    imageModel:   'gemini-3.1-flash-lite-image',
     scenes:       ['marble', 'model', 'golden', 'silk'],
     angles:       [],
     gender:       'female',
@@ -45,12 +45,12 @@ async function loadConfig(store) {
   try {
     const dbSettings = await store.getSettings();
     let imageModel = dbSettings.image_model || defaults.imageModel;
-    if (imageModel.includes('3.1-flash-image') || !imageModel) {
-      imageModel = 'gemini-2.5-flash-image';
+    if (imageModel.includes('2.5-flash-image') || imageModel.includes('3.1-flash-image') || !imageModel) {
+      imageModel = 'gemini-3.1-flash-lite-image';
     }
     let textModel = dbSettings.text_model || defaults.textModel;
-    if (textModel.includes('gemini-flash-latest') || !textModel) {
-      textModel = 'gemini-2.5-flash';
+    if (textModel.includes('2.5-flash') || textModel.includes('gemini-flash-latest') || !textModel) {
+      textModel = 'gemini-3.5-flash';
     }
     return {
       geminiApiKey: dbSettings.gemini_api_key || defaults.geminiApiKey,

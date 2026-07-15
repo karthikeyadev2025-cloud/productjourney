@@ -447,18 +447,21 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
         <input id="apiKey" type="password" placeholder="AIza…" style="margin-bottom: 16px;">
         <label>Text Copywriter Model</label>
         <select id="textModel" style="margin-bottom: 16px;">
-          <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended - Copywriting)</option>
-          <option value="gemini-2.5-pro">Gemini 2.5 Pro (Creative/High-Fidelity Copy)</option>
+          <option value="gemini-3.5-flash">Gemini 3.5 Flash (Recommended - Copywriting)</option>
+          <option value="gemini-3.5-pro">Gemini 3.5 Pro (Creative/High-Fidelity Copy)</option>
         </select>
         <label>Image Render Model</label>
         <select id="imageModel" style="margin-bottom: 16px;">
-          <option value="gemini-2.5-flash-image">Gemini 2.5 Flash Image (Multimodal - Recommended)</option>
-          <option value="imagen-3.0-generate-002">Imagen 3.0 (Photorealistic standalone renders)</option>
+          <option value="gemini-3.1-flash-lite-image">Gemini 3.1 Flash Lite Image (Recommended)</option>
+          <option value="gemini-3-pro-image">Gemini 3 Pro Image (High-Fidelity Renders)</option>
         </select>
         <div class="row" style="margin-top:20px">
           <button class="btn small" id="saveGemini">Save Gemini</button>
           <button class="btn small ghost" id="testGemini">Test key</button>
           <span id="geminiMsg" style="font-size:13px"></span>
+        </div>
+        <div style="background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 8px; padding: 12px 16px; margin-top: 20px; font-size: 12.5px; color: var(--gold-soft); line-height: 1.5;">
+          ⚠️ <strong>Enterprise Pipeline Notice:</strong> To execute high-volume jobs (e.g. 5,000+ variants / 10,000+ renders), you must set up a <strong>Paid Pay-As-You-Go Plan</strong> in Google AI Studio to unlock production rate limits. The free tier will block runs exceeding 1,500 daily requests.
         </div>
       </div>
 
