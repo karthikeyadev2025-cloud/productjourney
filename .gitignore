@@ -9,3 +9,4 @@ catalog.csv
 *.zip
 .DS_Store
 nohup.out
+.vercel

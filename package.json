@@ -1,16 +1,16 @@
 {
   "name": "jewelry-pipeline",
   "version": "2.0.0",
-  "description": "Local jewelry product pipeline with Gemini + Supabase Storage",
+  "description": "Jewelry product pipeline — Vercel + Supabase cloud version",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "build": "echo 'No build step needed'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
-    "archiver": "^7.0.1",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "multer": "^1.4.5-lts.1"

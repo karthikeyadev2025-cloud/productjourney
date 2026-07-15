@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Atelier — Jewelry Pipeline</title>
+<meta name="description" content="AI-powered jewelry product pipeline. Upload raw photos, get professional scene renders, descriptions, and catalog-ready assets.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -132,7 +133,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:20px 0}
     <div class="grid2">
       <div class="card">
         <h2>Upload queue</h2>
-        <div class="sub">Drop raw jewelry photos here, or place them in the <b>input_raw</b> folder.</div>
+        <div class="sub">Drop raw jewelry photos here — they upload to Supabase Storage.</div>
         <div class="drop" id="drop">Click or drag images here (JPG / PNG / WEBP)</div>
         <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
         <div class="queue" id="queue"></div>
@@ -174,11 +175,10 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:20px 0}
       <div class="row" style="justify-content:space-between">
         <div>
           <h2>Finished products</h2>
-          <div class="sub" style="margin-bottom:0">Local folders + Supabase mirror. Any storefront can pull from <code>/storefront/products</code>.</div>
+          <div class="sub" style="margin-bottom:0">Stored in Supabase. Any storefront can pull from <code>/storefront/products</code>.</div>
         </div>
         <div class="row">
           <button class="btn small ghost" id="csvBtn">Download catalog.csv</button>
-          <button class="btn small" id="exportBtn">Export all (.zip)</button>
         </div>
       </div>
     </div>
@@ -191,7 +191,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:20px 0}
     <div class="grid2">
       <div class="card">
         <h2>Gemini</h2>
-        <div class="sub">Your Google AI Studio key. Stored only in <code>config.json</code> on this machine.</div>
+        <div class="sub">Your Google AI Studio key. Stored in Supabase settings table.</div>
         <label>API key</label>
         <input id="apiKey" type="password" placeholder="AIza…">
         <label>Text model</label>
@@ -207,7 +207,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:20px 0}
 
       <div class="card">
         <h2>Supabase</h2>
-        <div class="sub">For persistent image library + storefront pull API. Run <code>SUPABASE_SETUP.sql</code> once in your project.</div>
+        <div class="sub">Connected via environment variables. Run <code>SUPABASE_SETUP.sql</code> once in your project.</div>
         <label>Project URL</label>
         <input id="sbUrl" placeholder="https://xxxxx.supabase.co">
         <label>Service role key (secret)</label>
@@ -234,7 +234,6 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:20px 0}
     <div class="thumbs" id="mThumbs" style="margin-bottom:16px"></div>
     <div class="desc" id="mDesc"></div>
     <div class="row" style="margin-top:20px">
-      <button class="btn small" id="mZip">Download this product (.zip)</button>
       <button class="btn small ghost" id="mDelete">Delete product</button>
     </div>
   </div>
@@ -247,6 +246,7 @@ let token = localStorage.getItem('atelier_token') || '';
 let presets = null;
 let cfg = null;
 let pollTimer = null;
+let processingTimer = null;
 
 const $ = s => document.querySelector(s);
 function toast(msg, ms=2600){ const t=$('#toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none', ms); }
@@ -256,6 +256,16 @@ async function api(url, opts={}){
   if(opts.body && !(opts.body instanceof FormData)){ opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(opts.body); }
   const r = await fetch(url, opts);
   if(r.status===401){ showLogin(); throw new Error('Not signed in'); }
+  const ct = r.headers.get('content-type') || '';
+  if(ct.includes('text/csv')){
+    // Handle CSV download
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'catalog.csv';
+    a.click();
+    return {};
+  }
   const data = await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(data.error || 'Request failed');
   return data;
@@ -321,7 +331,7 @@ async function boot(){
     loadQueue(); loadProducts();
     updateSbStatus();
     const j = await api('/api/status');
-    if(j.running){ $('#prog').classList.add('show'); startPolling(); }
+    if(j.running){ $('#prog').classList.add('show'); startPolling(); startProcessing(); }
   }catch(e){ if(e.message!=='Not signed in') toast(e.message); }
 }
 
@@ -358,6 +368,7 @@ async function loadQueue(){
     el.innerHTML = `<img alt=""><button class="x" title="Remove">✕</button><div class="name">${f}</div>`;
     el.querySelector('.x').onclick = async () => { await api('/api/input/'+encodeURIComponent(f), {method:'DELETE'}); loadQueue(); };
     q.appendChild(el);
+    // Load preview via redirect (server redirects to Supabase public URL)
     loadAuthImg(el.querySelector('img'), '/api/input/preview/'+encodeURIComponent(f));
   });
   $('#runBtn').disabled = !d.files.length;
@@ -365,7 +376,17 @@ async function loadQueue(){
 }
 
 async function loadAuthImg(img, url){
-  try{ const r = await fetch(url, {headers:{'x-auth-token':token}}); if(r.ok) img.src = URL.createObjectURL(await r.blob()); }catch{}
+  try{
+    const r = await fetch(url, {headers:{'x-auth-token':token}});
+    if(r.ok){
+      // Check if it was redirected to a Supabase URL
+      if(r.redirected){
+        img.src = r.url;
+      } else {
+        img.src = URL.createObjectURL(await r.blob());
+      }
+    }
+  }catch{}
 }
 
 /* run + progress */
@@ -377,27 +398,54 @@ $('#runBtn').onclick = async () => {
     }});
     $('#prog').classList.add('show');
     startPolling();
+    startProcessing();
   }catch(e){ toast(e.message); }
 };
 
+/**
+ * On Vercel, we can't have long-running background tasks.
+ * Instead, the client drives processing by calling /api/process/next repeatedly.
+ * Each call processes ONE image within the 60s timeout.
+ */
+function startProcessing(){
+  clearInterval(processingTimer);
+  processingTimer = setInterval(async () => {
+    try{
+      const result = await api('/api/process/next', {method:'POST'});
+      if(result.done){
+        clearInterval(processingTimer);
+        // Final poll to update UI
+        setTimeout(pollStatus, 500);
+      }
+    }catch(e){
+      // If error, stop processing
+      clearInterval(processingTimer);
+      toast('Processing error: ' + e.message);
+    }
+  }, 2000); // Wait 2s between requests to avoid overlap
+}
+
 function startPolling(){
   clearInterval(pollTimer);
-  pollTimer = setInterval(async () => {
-    try{
-      const j = await api('/api/status');
-      const pct = j.total ? Math.round((j.done/j.total)*100) : 0;
-      $('#barFill').style.width = pct + '%';
-      $('#progCount').textContent = `${j.done} / ${j.total} products`;
-      $('#progText').textContent = j.running ? `${j.current} — ${j.step}` : (j.total ? 'Batch complete' : '—');
-      $('#logbox').innerHTML = j.logs.map(l => `<div class="${/failed|error/i.test(l.msg)?'e':''}">${l.msg}</div>`).join('');
-      $('#logbox').scrollTop = $('#logbox').scrollHeight;
-      if(!j.running && j.total){
-        clearInterval(pollTimer);
-        loadQueue(); loadProducts();
-        if(j.done === j.total) toast('Batch complete');
-      }
-    }catch{}
-  }, 1500);
+  pollTimer = setInterval(pollStatus, 2500);
+}
+
+async function pollStatus(){
+  try{
+    const j = await api('/api/status');
+    const pct = j.total ? Math.round((j.done/j.total)*100) : 0;
+    $('#barFill').style.width = pct + '%';
+    $('#progCount').textContent = `${j.done} / ${j.total} products`;
+    $('#progText').textContent = j.running ? `${j.current} — ${j.step}` : (j.total ? 'Batch complete' : '—');
+    $('#logbox').innerHTML = (j.logs||[]).map(l => `<div class="${/failed|error/i.test(l.msg)?'e':''}">${l.msg}</div>`).join('');
+    $('#logbox').scrollTop = $('#logbox').scrollHeight;
+    if(!j.running && j.total){
+      clearInterval(pollTimer);
+      clearInterval(processingTimer);
+      loadQueue(); loadProducts();
+      if(j.done === j.total) toast('Batch complete');
+    }
+  }catch{}
 }
 
 /* products */
@@ -406,56 +454,49 @@ async function loadProducts(){
   const g = $('#pgrid'); g.innerHTML='';
   $('#pEmpty').hidden = d.products.length > 0;
   for(const p of d.products){
-    const heroFile = (p.images.find(f=>!/original/.test(f)) || p.images[0]);
+    // Use Supabase public URLs directly from the images array
+    const heroImg = (p.images || []).find(i => !/original/.test(i.name));
+    const heroUrl = heroImg?.url || '';
     const el = document.createElement('div'); el.className='pcard';
     el.innerHTML = `
-      <div class="hero"><img alt="${p.folder}"></div>
+      <div class="hero"><img alt="${p.product_name || p.folder}" src="${heroUrl}"></div>
       <div class="body">
-        <div class="pname">${p.meta?.product_name || p.folder}</div>
-        <div class="pshort">${p.meta?.short_description || ''}</div>
+        <div class="pname">${p.product_name || p.folder}</div>
+        <div class="pshort">${p.short_description || ''}</div>
         <div class="thumbs"></div>
         <div class="actions">
           <button class="btn small" data-a="open">Open</button>
-          <button class="btn small ghost" data-a="zip">.zip</button>
         </div>
       </div>`;
     g.appendChild(el);
-    if(heroFile) loadAuthImg(el.querySelector('.hero img'), `/api/products/${encodeURIComponent(p.folder)}/image/${encodeURIComponent(heroFile)}`);
     const th = el.querySelector('.thumbs');
-    p.images.filter(f=>!/original/.test(f)).slice(0,6).forEach(f => {
-      const im = document.createElement('img'); th.appendChild(im);
-      loadAuthImg(im, `/api/products/${encodeURIComponent(p.folder)}/image/${encodeURIComponent(f)}`);
+    (p.images || []).filter(i => !/original/.test(i.name)).slice(0,6).forEach(img => {
+      const im = document.createElement('img');
+      im.src = img.url || '';
+      im.alt = img.name;
+      th.appendChild(im);
     });
     el.querySelector('[data-a=open]').onclick = () => openModal(p);
-    el.querySelector('[data-a=zip]').onclick = () => downloadUrl(`/api/products/${encodeURIComponent(p.folder)}/zip`, p.folder + '.zip');
   }
 }
 
-async function downloadUrl(url, name){
-  const r = await fetch(url, {headers:{'x-auth-token':token}});
-  if(!r.ok){ toast('Download failed'); return; }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = name; a.click();
-}
-
 function openModal(p){
-  $('#mName').textContent = p.meta?.product_name || p.folder;
-  const tags = (p.meta?.tags || []).map(t => `<span class="pill">${t}</span>`).join('');
-  $('#mPills').innerHTML = `<span class="pill">${p.folder}</span><span class="pill">${p.images.length} files</span>` +
-    (p.meta?.category ? `<span class="pill">${p.meta.category}</span>` : '') +
-    (p.meta?.materials ? `<span class="pill">${p.meta.materials}</span>` : '') + tags;
-  $('#mDesc').textContent = p.meta ? `${p.meta.short_description}\n\n${p.meta.long_description}` : '';
+  $('#mName').textContent = p.product_name || p.folder;
+  const tags = (p.tags || []).map(t => `<span class="pill">${t}</span>`).join('');
+  $('#mPills').innerHTML = `<span class="pill">${p.folder}</span><span class="pill">${(p.images||[]).length} files</span>` +
+    (p.category ? `<span class="pill">${p.category}</span>` : '') +
+    (p.materials ? `<span class="pill">${p.materials}</span>` : '') + tags;
+  $('#mDesc').textContent = p.short_description ? `${p.short_description}\n\n${p.long_description || ''}` : '';
   const th = $('#mThumbs'); th.innerHTML='';
-  const all = p.images.filter(f=>!/original/.test(f)).concat(p.images.filter(f=>/original/.test(f)));
-  all.forEach((f,i) => {
-    const im = document.createElement('img'); im.title=f; th.appendChild(im);
-    loadAuthImg(im, `/api/products/${encodeURIComponent(p.folder)}/image/${encodeURIComponent(f)}`);
-    im.onclick = () => loadAuthImg($('#mImg'), `/api/products/${encodeURIComponent(p.folder)}/image/${encodeURIComponent(f)}`);
-    if(i===0) loadAuthImg($('#mImg'), `/api/products/${encodeURIComponent(p.folder)}/image/${encodeURIComponent(f)}`);
+  const all = (p.images || []).filter(i => !/original/.test(i.name)).concat((p.images || []).filter(i => /original/.test(i.name)));
+  all.forEach((img,i) => {
+    const im = document.createElement('img'); im.title=img.name; im.src=img.url||''; th.appendChild(im);
+    im.onclick = () => { $('#mImg').src = img.url || ''; };
+    if(i===0) $('#mImg').src = img.url || '';
   });
-  $('#mZip').onclick = () => downloadUrl(`/api/products/${encodeURIComponent(p.folder)}/zip`, p.folder + '.zip');
   $('#mDelete').onclick = async () => {
-    if(!confirm('Delete this product folder permanently?')) return;
-    await api('/api/products/'+encodeURIComponent(p.folder), {method:'DELETE'});
+    if(!confirm('Delete this product permanently?')) return;
+    await api('/api/products/'+encodeURIComponent(p.id), {method:'DELETE'});
     closeModal(); loadProducts(); toast('Product deleted');
   };
   $('#modal').classList.add('show');
@@ -463,8 +504,7 @@ function openModal(p){
 function closeModal(){ $('#modal').classList.remove('show'); }
 $('#modal').addEventListener('click', e => { if(e.target === $('#modal')) closeModal(); });
 
-$('#exportBtn').onclick = () => downloadUrl('/api/export/all', 'jewelry-catalog.zip');
-$('#csvBtn').onclick    = () => downloadUrl('/api/export/csv', 'catalog.csv');
+$('#csvBtn').onclick = () => { window.open('/api/export/csv', '_blank'); };
 
 /* settings */
 function fillSettings(){
