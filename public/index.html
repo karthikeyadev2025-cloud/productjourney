@@ -562,7 +562,7 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
     <div class="grid2">
       <div class="card">
         <h2>Upload raw queue</h2>
-        <div class="sub">Drop raw product photos here — uploads go directly to Supabase Storage.</div>
+        <div class="sub">Drop raw product photos here — uploads go directly to Supabase Storage. <br><span style="color: var(--gold-soft); font-size: 12px;">💡 <strong>Multi-Shot Grouping:</strong> Name files sharing the same prefix like <code>ring_1.jpg</code>, <code>ring_2.jpg</code>, etc. Gemini will automatically pick the best one and discard the rest.</span></div>
         <div class="drop" id="drop">Click or drag images here (JPG / PNG / WEBP)</div>
         <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
         <div class="queue" id="queue"></div>
@@ -1372,23 +1372,63 @@ function openModal(p){
   // Set original image canvas
   const orig = (p.images || []).find(i => /original/i.test(i.name));
   $('#mImgOrig').src = orig ? orig.url : '';
+  
+  // Direct click to download original image
+  $('#mImgOrig').style.cursor = 'pointer';
+  $('#mImgOrig').title = 'Click to download original image';
+  $('#mImgOrig').onclick = async () => {
+    if (!orig || !orig.url) return;
+    const cleanProdName = (p.product_name || p.folder || 'product').replace(/[^\w\s\-]/g, '').trim().replace(/\s+/g, '_');
+    toast('Downloading original...');
+    try {
+      const res = await fetch(orig.url);
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${cleanProdName}-original.png`;
+      a.click();
+    } catch (e) {
+      toast('Download failed: ' + e.message);
+    }
+  };
 
   // Set thumbnails and initial AI Variant render
   const variants = (p.images || []).filter(i => !/original/i.test(i.name));
   variants.forEach((img,i) => {
     const im = document.createElement('img'); im.title=img.name; im.src=img.url||''; th.appendChild(im);
-    im.onclick = () => { $('#mImg').src = img.url || ''; };
-    if(i===0) $('#mImg').src = img.url || '';
+    im.onclick = () => { 
+      $('#mImg').src = img.url || '';
+      $('#mImg').dataset.scene = img.scene || '';
+      $('#mImg').dataset.angle = img.angle || '';
+    };
+    if(i===0) {
+      $('#mImg').src = img.url || '';
+      $('#mImg').dataset.scene = img.scene || '';
+      $('#mImg').dataset.angle = img.angle || '';
+    }
   });
+
+  // Direct click to download active variant
+  $('#mImg').style.cursor = 'pointer';
+  $('#mImg').title = 'Click to download this campaign image';
+  $('#mImg').onclick = () => {
+    $('#mDownloadImg').click();
+  };
+
   $('#mDownloadImg').onclick = async () => {
     const url = $('#mImg').src;
     if (!url) return;
     try {
+      const scene = $('#mImg').dataset.scene || 'variant';
+      const angle = $('#mImg').dataset.angle || '';
+      const suffix = angle && angle !== '-' ? `${scene}-${angle}` : scene;
+      const cleanProdName = (p.product_name || p.folder || 'product').replace(/[^\w\s\-]/g, '').trim().replace(/\s+/g, '_');
+      
       const res = await fetch(url);
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = url.substring(url.lastIndexOf('/') + 1) || 'image.png';
+      a.download = `${cleanProdName}-${suffix}.png`;
       a.click();
     } catch (e) {
       toast('Download failed: ' + e.message);
@@ -1397,6 +1437,7 @@ function openModal(p){
 
   $('#mZip').onclick = async () => {
     const oldText = $('#mZip').textContent;
+    const cleanProdName = (p.product_name || p.folder || 'product').replace(/[^\w\s\-]/g, '').trim().replace(/\s+/g, '_');
     $('#mZip').textContent = 'Zipping...';
     $('#mZip').disabled = true;
     try {
@@ -1405,12 +1446,18 @@ function openModal(p){
         if (!img.url) continue;
         const res = await fetch(img.url);
         const blob = await res.blob();
-        zip.file(img.name, blob);
+        
+        let suffix = img.scene || 'variant';
+        if (img.angle && img.angle !== '-') {
+          suffix = `${img.scene}-${img.angle}`;
+        }
+        const zipFileName = `${cleanProdName}-${suffix}.png`;
+        zip.file(zipFileName, blob);
       }
       const content = await zip.generateAsync({ type: 'blob' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(content);
-      a.download = `${p.folder || 'product'}-renders.zip`;
+      a.download = `${cleanProdName}-renders.zip`;
       a.click();
       toast('ZIP download started!');
     } catch (e) {
