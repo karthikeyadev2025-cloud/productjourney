@@ -327,6 +327,17 @@ app.post('/api/process', auth, async (req, res) => {
   }
 });
 
+// Force-stop the running batch
+app.post('/api/process/stop', auth, async (req, res) => {
+  try {
+    const store = getStore();
+    await store.updateJob({ running: false, step: 'Stopped by user.' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Process one image at a time — client calls this repeatedly
 app.post('/api/process/next', auth, async (req, res) => {
   try {

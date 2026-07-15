@@ -1075,11 +1075,15 @@ $('#bccLogToggle').onclick = () => {
   $('#bccLogToggle').textContent = bccLogCollapsed ? 'Expand ▼' : 'Collapse ▲';
 };
 
-// Stop batch (graceful — just stop firing /api/process/next)
-$('#bccStopBtn').onclick = () => {
+// Stop batch — kills server-side running flag AND local loop
+$('#bccStopBtn').onclick = async () => {
   isProcessing = false;
   clearInterval(pollTimer);
-  toast('Batch paused — current image will finish then stop.');
+  try {
+    await api('/api/process/stop', { method: 'POST' });
+  } catch (_) {}
+  toast('Batch stopped.');
+  setTimeout(pollStatus, 600);
 };
 
 // Retry failed: move errored files back to queued, restart
