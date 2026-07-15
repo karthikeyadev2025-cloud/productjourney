@@ -1,0 +1,11 @@
+node_modules/
+.env
+config.json
+input_raw/*
+!input_raw/.gitkeep
+output/*
+!output/.gitkeep
+catalog.csv
+*.zip
+.DS_Store
+nohup.out

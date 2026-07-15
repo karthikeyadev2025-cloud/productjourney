@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atelier — Jewelry Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#14120f; --panel:#1d1a16; --panel-2:#26221c; --line:#3a342b;
+  --gold:#c9a24b; --gold-soft:#e6cf96; --cream:#f3ead8; --mut:#9a9184;
+  --ok:#7fb069; --bad:#d16a5a;
+  --disp:'Cormorant Garamond',serif; --body:'Inter',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ink);color:var(--cream);font-family:var(--body);font-size:14px;min-height:100vh}
+button{font-family:var(--body);cursor:pointer;border:none}
+input,select,textarea{font-family:var(--body)}
+a{color:var(--gold-soft)}
+
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(ellipse at 50% -10%, #2b2418 0%, var(--ink) 60%)}
+.login-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:40px 34px}
+.brand{font-family:var(--disp);font-size:38px;font-weight:600;letter-spacing:.5px;text-align:center;color:var(--gold-soft)}
+.brand em{color:var(--gold)}
+.tagline{text-align:center;color:var(--mut);margin:6px 0 30px;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase}
+label{display:block;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin:16px 0 6px}
+input,select,textarea{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:8px;color:var(--cream);padding:11px 13px;font-size:14px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold)}
+.btn{background:var(--gold);color:#1a1508;font-weight:600;border-radius:8px;padding:12px 18px;font-size:14px;width:100%;margin-top:24px;transition:filter .15s}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--cream);width:auto}
+.btn.ghost:hover{border-color:var(--gold)}
+.btn.small{width:auto;padding:8px 14px;margin-top:0;font-size:13px}
+.err{color:var(--bad);margin-top:12px;font-size:13px;min-height:16px}
+
+.shell{display:none;max-width:1200px;margin:0 auto;padding:0 24px 80px}
+header{display:flex;align-items:center;justify-content:space-between;padding:22px 0;border-bottom:1px solid var(--line);margin-bottom:28px}
+header .brand{font-size:26px;text-align:left}
+nav{display:flex;gap:6px}
+nav button{background:transparent;color:var(--mut);padding:9px 16px;border-radius:8px;font-size:13.5px;font-weight:500}
+nav button.on{background:var(--panel-2);color:var(--gold-soft)}
+nav button:hover{color:var(--cream)}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px}
+h2{font-family:var(--disp);font-size:24px;font-weight:600;color:var(--gold-soft);margin-bottom:4px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:18px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+
+.drop{border:1.5px dashed var(--line);border-radius:12px;padding:28px;text-align:center;color:var(--mut);cursor:pointer;transition:.15s}
+.drop:hover,.drop.over{border-color:var(--gold);color:var(--gold-soft)}
+.queue{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;margin-top:16px}
+.qitem{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--ink)}
+.qitem img{width:100%;height:96px;object-fit:cover;display:block}
+.qitem .name{font-size:10.5px;color:var(--mut);padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qitem .x{position:absolute;top:5px;right:5px;background:rgba(20,18,15,.85);color:var(--cream);border-radius:6px;width:22px;height:22px;font-size:12px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chip{background:var(--ink);border:1px solid var(--line);color:var(--mut);border-radius:99px;padding:7px 14px;font-size:12.5px;cursor:pointer;user-select:none}
+.chip.on{border-color:var(--gold);color:var(--gold-soft);background:var(--panel-2)}
+.hint{font-size:11.5px;color:var(--mut);margin-top:6px;font-style:italic}
+
+.prog{margin-top:16px;display:none}
+.prog.show{display:block}
+.bar{height:8px;background:var(--ink);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-soft));width:0%;transition:width .4s;border-radius:99px}
+.meta{display:flex;justify-content:space-between;color:var(--mut);font-size:12.5px;margin-top:8px}
+.logbox{background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:14px;height:180px;overflow:auto;font-size:12px;color:var(--mut);line-height:1.7;font-family:ui-monospace,monospace}
+.logbox .e{color:var(--bad)}
+
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.pcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.pcard .hero{height:190px;background:var(--ink)}
+.pcard .hero img{width:100%;height:100%;object-fit:cover;display:block}
+.pcard .body{padding:16px;flex:1;display:flex;flex-direction:column;gap:8px}
+.pcard .pname{font-family:var(--disp);font-size:20px;font-weight:600;color:var(--gold-soft)}
+.pcard .pshort{color:var(--mut);font-size:12.5px;line-height:1.55;flex:1}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap}
+.thumbs img{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer}
+.pcard .actions{display:flex;gap:8px;margin-top:6px}
+.empty{color:var(--mut);text-align:center;padding:50px 0;font-size:13.5px}
+
+.modal{display:none;position:fixed;inset:0;background:rgba(10,9,7,.88);z-index:50;align-items:center;justify-content:center;padding:24px}
+.modal.show{display:flex}
+.modal .inner{max-width:900px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;max-height:92vh;overflow:auto}
+.modal img.big{width:100%;border-radius:10px;margin:14px 0}
+.modal .desc{color:var(--cream);font-size:13.5px;line-height:1.75;white-space:pre-wrap}
+.pill{display:inline-block;background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:4px 12px;font-size:11.5px;color:var(--mut);margin:2px 4px 2px 0}
+
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--gold);color:var(--cream);padding:12px 22px;border-radius:10px;font-size:13.5px;display:none;z-index:99}
+hr.sep{border:none;border-top:1px solid var(--line);margin:20px 0}
+.ok-txt{color:var(--ok)}
+.bad-txt{color:var(--bad)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mut)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--bad)}
+.dot.on{background:var(--ok)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="loginView">
+  <div class="login-card">
+    <div class="brand">Ate<em>l</em>ier</div>
+    <div class="tagline">Jewelry Product Pipeline</div>
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="username" placeholder="you@example.com">
+    <label>Password</label>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="••••••••">
+    <button class="btn" id="loginBtn">Sign in</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<div class="shell" id="appView">
+  <header>
+    <div class="brand">Ate<em>l</em>ier</div>
+    <nav>
+      <button data-tab="studio" class="on">Studio</button>
+      <button data-tab="products">Products</button>
+      <button data-tab="settings">Settings</button>
+      <button id="logoutBtn">Sign out</button>
+    </nav>
+  </header>
+
+  <!-- STUDIO -->
+  <section id="tab-studio">
+    <div class="grid2">
+      <div class="card">
+        <h2>Upload queue</h2>
+        <div class="sub">Drop raw jewelry photos here, or place them in the <b>input_raw</b> folder.</div>
+        <div class="drop" id="drop">Click or drag images here (JPG / PNG / WEBP)</div>
+        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
+        <div class="queue" id="queue"></div>
+      </div>
+
+      <div class="card">
+        <h2>Batch settings</h2>
+        <div class="sub">Choose which scenes, angles and model style to render.</div>
+
+        <label>Scenes</label>
+        <div class="chips" id="chips-scenes"></div>
+
+        <label>Extra angles (studio, jewelry only)</label>
+        <div class="chips" id="chips-angles"></div>
+        <div class="hint">Optional — adds clean neutral shots from each angle.</div>
+
+        <label>Model gender</label>
+        <div class="chips" id="chips-gender"></div>
+
+        <label>Style preset</label>
+        <div class="chips" id="chips-preset"></div>
+        <div class="hint">Only applies to scenes with a model (editorial, golden hour, macro).</div>
+
+        <button class="btn" id="runBtn">Process all images</button>
+
+        <div class="prog" id="prog">
+          <hr class="sep">
+          <div class="bar"><i id="barFill"></i></div>
+          <div class="meta"><span id="progText">—</span><span id="progCount">0 / 0</span></div>
+          <div class="logbox" id="logbox"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRODUCTS -->
+  <section id="tab-products" hidden>
+    <div class="card" style="margin-bottom:18px">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h2>Finished products</h2>
+          <div class="sub" style="margin-bottom:0">Local folders + Supabase mirror. Any storefront can pull from <code>/storefront/products</code>.</div>
+        </div>
+        <div class="row">
+          <button class="btn small ghost" id="csvBtn">Download catalog.csv</button>
+          <button class="btn small" id="exportBtn">Export all (.zip)</button>
+        </div>
+      </div>
+    </div>
+    <div class="pgrid" id="pgrid"></div>
+    <div class="empty" id="pEmpty" hidden>Nothing here yet — run a batch from the Studio.</div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" hidden>
+    <div class="grid2">
+      <div class="card">
+        <h2>Gemini</h2>
+        <div class="sub">Your Google AI Studio key. Stored only in <code>config.json</code> on this machine.</div>
+        <label>API key</label>
+        <input id="apiKey" type="password" placeholder="AIza…">
+        <label>Text model</label>
+        <input id="textModel" placeholder="gemini-2.5-flash">
+        <label>Image model</label>
+        <input id="imageModel" placeholder="gemini-2.5-flash-image">
+        <div class="row" style="margin-top:20px">
+          <button class="btn small" id="saveGemini">Save Gemini</button>
+          <button class="btn small ghost" id="testGemini">Test key</button>
+          <span id="geminiMsg" style="font-size:13px"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Supabase</h2>
+        <div class="sub">For persistent image library + storefront pull API. Run <code>SUPABASE_SETUP.sql</code> once in your project.</div>
+        <label>Project URL</label>
+        <input id="sbUrl" placeholder="https://xxxxx.supabase.co">
+        <label>Service role key (secret)</label>
+        <input id="sbKey" type="password" placeholder="eyJ…">
+        <div class="row" style="margin-top:20px">
+          <button class="btn small" id="saveSb">Save Supabase</button>
+          <button class="btn small ghost" id="testSb">Test connection</button>
+          <span id="sbMsg" style="font-size:13px"></span>
+        </div>
+        <div class="status" style="margin-top:16px"><span class="dot" id="sbDot"></span><span id="sbStatus">Not connected</span></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="modal">
+  <div class="inner">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="mName">—</h2>
+      <button class="btn small ghost" onclick="closeModal()">Close</button>
+    </div>
+    <div id="mPills"></div>
+    <img class="big" id="mImg" alt="">
+    <div class="thumbs" id="mThumbs" style="margin-bottom:16px"></div>
+    <div class="desc" id="mDesc"></div>
+    <div class="row" style="margin-top:20px">
+      <button class="btn small" id="mZip">Download this product (.zip)</button>
+      <button class="btn small ghost" id="mDelete">Delete product</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let token = localStorage.getItem('atelier_token') || '';
+let presets = null;
+let cfg = null;
+let pollTimer = null;
+
+const $ = s => document.querySelector(s);
+function toast(msg, ms=2600){ const t=$('#toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none', ms); }
+
+async function api(url, opts={}){
+  opts.headers = Object.assign({'x-auth-token': token}, opts.headers||{});
+  if(opts.body && !(opts.body instanceof FormData)){ opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(opts.body); }
+  const r = await fetch(url, opts);
+  if(r.status===401){ showLogin(); throw new Error('Not signed in'); }
+  const data = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+/* auth */
+function showLogin(){ $('#loginView').style.display='flex'; $('#appView').style.display='none'; }
+function showApp(){ $('#loginView').style.display='none'; $('#appView').style.display='block'; boot(); }
+$('#loginBtn').onclick = async () => {
+  $('#loginErr').textContent='';
+  try{
+    const d = await api('/api/login', {method:'POST', body:{email:$('#email').value.trim(), password:$('#pass').value}});
+    token = d.token; localStorage.setItem('atelier_token', token); showApp();
+  }catch(e){ $('#loginErr').textContent = e.message; }
+};
+$('#pass').addEventListener('keydown', e => { if(e.key==='Enter') $('#loginBtn').click(); });
+$('#logoutBtn').onclick = async () => { try{ await api('/api/logout',{method:'POST'}); }catch{} token=''; localStorage.removeItem('atelier_token'); showLogin(); };
+
+/* tabs */
+document.querySelectorAll('nav button[data-tab]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button[data-tab]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  ['studio','products','settings'].forEach(t => $('#tab-'+t).hidden = t!==b.dataset.tab);
+  if(b.dataset.tab==='products') loadProducts();
+});
+
+/* chips helper */
+function renderChips(containerId, items, selected, multi){
+  const el = $(containerId); el.innerHTML='';
+  items.forEach(it => {
+    const c = document.createElement('div'); c.className='chip'; c.textContent=it.label; c.dataset.key=it.key;
+    if(multi ? selected.includes(it.key) : selected===it.key) c.classList.add('on');
+    c.onclick = () => {
+      if(multi){
+        const i = selected.indexOf(it.key);
+        if(i>-1) selected.splice(i,1); else selected.push(it.key);
+      } else {
+        selected.value = it.key;
+      }
+      renderChips(containerId, items, selected, multi);
+      saveCfgSilent();
+    };
+    el.appendChild(c);
+  });
+}
+
+/* studio settings state */
+let sScenes=[], sAngles=[], sGender={value:'female'}, sPreset={value:'clean'};
+
+async function boot(){
+  try{
+    presets = await api('/api/presets');
+    cfg = await api('/api/settings');
+    sScenes = [...(cfg.scenes || ['marble','model','golden','silk'])];
+    sAngles = [...(cfg.angles || [])];
+    sGender = {value: cfg.gender || 'female'};
+    sPreset = {value: cfg.preset || 'clean'};
+    renderChips('#chips-scenes',  presets.scenes,  sScenes, true);
+    renderChips('#chips-angles',  presets.angles,  sAngles, true);
+    renderChips('#chips-gender',  presets.genders, sGender, false);
+    renderChips('#chips-preset',  presets.presets, sPreset, false);
+    fillSettings();
+    loadQueue(); loadProducts();
+    updateSbStatus();
+    const j = await api('/api/status');
+    if(j.running){ $('#prog').classList.add('show'); startPolling(); }
+  }catch(e){ if(e.message!=='Not signed in') toast(e.message); }
+}
+
+async function saveCfgSilent(){
+  try{
+    await api('/api/settings', {method:'POST', body:{
+      scenes: sScenes, angles: sAngles, gender: sGender.value, preset: sPreset.value
+    }});
+  }catch{}
+}
+
+/* upload queue */
+const drop = $('#drop'), fileInput = $('#fileInput');
+drop.onclick = () => fileInput.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); uploadFiles(e.dataTransfer.files); };
+fileInput.onchange = () => uploadFiles(fileInput.files);
+
+async function uploadFiles(files){
+  if(!files.length) return;
+  const fd = new FormData();
+  [...files].forEach(f => fd.append('images', f));
+  try{ await api('/api/input/upload', {method:'POST', body:fd}); toast(files.length + ' image(s) added'); loadQueue(); }
+  catch(e){ toast(e.message); }
+  fileInput.value='';
+}
+
+async function loadQueue(){
+  const d = await api('/api/input');
+  const q = $('#queue'); q.innerHTML='';
+  d.files.forEach(f => {
+    const el = document.createElement('div'); el.className='qitem';
+    el.innerHTML = `<img alt=""><button class="x" title="Remove">✕</button><div class="name">${f}</div>`;
+    el.querySelector('.x').onclick = async () => { await api('/api/input/'+encodeURIComponent(f), {method:'DELETE'}); loadQueue(); };
+    q.appendChild(el);
+    loadAuthImg(el.querySelector('img'), '/api/input/preview/'+encodeURIComponent(f));
+  });
+  $('#runBtn').disabled = !d.files.length;
+  $('#runBtn').textContent = d.files.length ? `Process ${d.files.length} image(s)` : 'Process all images';
+}
+
+async function loadAuthImg(img, url){
+  try{ const r = await fetch(url, {headers:{'x-auth-token':token}}); if(r.ok) img.src = URL.createObjectURL(await r.blob()); }catch{}
+}
+
+/* run + progress */
+$('#runBtn').onclick = async () => {
+  if(!sScenes.length){ toast('Pick at least one scene'); return; }
+  try{
+    await api('/api/process', {method:'POST', body:{
+      scenes: sScenes, angles: sAngles, gender: sGender.value, preset: sPreset.value
+    }});
+    $('#prog').classList.add('show');
+    startPolling();
+  }catch(e){ toast(e.message); }
+};
+
+function startPolling(){
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    try{
+      const j = await api('/api/status');
+      const pct = j.total ? Math.round((j.done/j.total)*100) : 0;
+      $('#barFill').style.width = pct + '%';
+      $('#progCount').textContent = `${j.done} / ${j.total} products`;
+      $('#progText').textContent = j.running ? `${j.current} — ${j.step}` : (j.total ? 'Batch complete' : '—');
+      $('#logbox').innerHTML = j.logs.map(l => `<div class="${/failed|error/i.test(l.msg)?'e':''}">${l.msg}</div>`).join('');
+      $('#logbox').scrollTop = $('#logbox').scrollHeight;
+      if(!j.running && j.total){
+        clearInterval(pollTimer);
+        loadQueue(); loadProducts();
+        if(j.done === j.total) toast('Batch complete');
+      }
+    }catch{}
+  }, 1500);
+}
+
+/* products */
+async function loadProducts(){
+  const d = await api('/api/products');
+  const g = $('#pgrid'); g.innerHTML='';
+  $('#pEmpty').hidden = d.products.length > 0;
+  for(const p of d.products){
+    const heroFile = (p.images.find(f=>!/original/.test(f)) || p.images[0]);
+    const el = document.createElement('div'); el.className='pcard';
+    el.innerHTML = `
+      <div class="hero"><img alt="${p.folder}"></div>
+      <div class="body">
+        <div class="pname">${p.meta?.product_name || p.folder}</div>
+        <div class="pshort">${p.meta?.short_description || ''}</div>
+        <div class="thumbs"></div>
+        <div class="actions">
+          <button class="btn small" data-a="open">Open</button>
+          <button class="btn small ghost" data-a="zip">.zip</button>
+        </div>
+      </div>`;
+    g.appendChild(el);
+    if(heroFile) loadAuthImg(el.querySelector('.hero img'), `/api/products/${encodeURIComponent(p.folder)}/image/${encodeURIComponent(heroFile)}`);
+    const th = el.querySelector('.thumbs');
+    p.images.filter(f=>!/original/.test(f)).slice(0,6).forEach(f => {
+      const im = document.createElement('img'); th.appendChild(im);
+      loadAuthImg(im, `/api/products/${encodeURIComponent(p.folder)}/image/${encodeURIComponent(f)}`);
+    });
+    el.querySelector('[data-a=open]').onclick = () => openModal(p);
+    el.querySelector('[data-a=zip]').onclick = () => downloadUrl(`/api/products/${encodeURIComponent(p.folder)}/zip`, p.folder + '.zip');
+  }
+}
+
+async function downloadUrl(url, name){
+  const r = await fetch(url, {headers:{'x-auth-token':token}});
+  if(!r.ok){ toast('Download failed'); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = name; a.click();
+}
+
+function openModal(p){
+  $('#mName').textContent = p.meta?.product_name || p.folder;
+  const tags = (p.meta?.tags || []).map(t => `<span class="pill">${t}</span>`).join('');
+  $('#mPills').innerHTML = `<span class="pill">${p.folder}</span><span class="pill">${p.images.length} files</span>` +
+    (p.meta?.category ? `<span class="pill">${p.meta.category}</span>` : '') +
+    (p.meta?.materials ? `<span class="pill">${p.meta.materials}</span>` : '') + tags;
+  $('#mDesc').textContent = p.meta ? `${p.meta.short_description}\n\n${p.meta.long_description}` : '';
+  const th = $('#mThumbs'); th.innerHTML='';
+  const all = p.images.filter(f=>!/original/.test(f)).concat(p.images.filter(f=>/original/.test(f)));
+  all.forEach((f,i) => {
+    const im = document.createElement('img'); im.title=f; th.appendChild(im);
+    loadAuthImg(im, `/api/products/${encodeURIComponent(p.folder)}/image/${encodeURIComponent(f)}`);
+    im.onclick = () => loadAuthImg($('#mImg'), `/api/products/${encodeURIComponent(p.folder)}/image/${encodeURIComponent(f)}`);
+    if(i===0) loadAuthImg($('#mImg'), `/api/products/${encodeURIComponent(p.folder)}/image/${encodeURIComponent(f)}`);
+  });
+  $('#mZip').onclick = () => downloadUrl(`/api/products/${encodeURIComponent(p.folder)}/zip`, p.folder + '.zip');
+  $('#mDelete').onclick = async () => {
+    if(!confirm('Delete this product folder permanently?')) return;
+    await api('/api/products/'+encodeURIComponent(p.folder), {method:'DELETE'});
+    closeModal(); loadProducts(); toast('Product deleted');
+  };
+  $('#modal').classList.add('show');
+}
+function closeModal(){ $('#modal').classList.remove('show'); }
+$('#modal').addEventListener('click', e => { if(e.target === $('#modal')) closeModal(); });
+
+$('#exportBtn').onclick = () => downloadUrl('/api/export/all', 'jewelry-catalog.zip');
+$('#csvBtn').onclick    = () => downloadUrl('/api/export/csv', 'catalog.csv');
+
+/* settings */
+function fillSettings(){
+  $('#apiKey').value = cfg.geminiApiKey || '';
+  $('#textModel').value = cfg.textModel;
+  $('#imageModel').value = cfg.imageModel;
+  $('#sbUrl').value = cfg.supabaseUrl || '';
+  $('#sbKey').value = cfg.supabaseKey || '';
+}
+
+function updateSbStatus(){
+  const on = cfg.hasSupabase;
+  $('#sbDot').classList.toggle('on', on);
+  $('#sbStatus').textContent = on ? 'Supabase configured' : 'Not connected';
+}
+
+$('#saveGemini').onclick = async () => {
+  try{
+    await api('/api/settings', {method:'POST', body:{
+      geminiApiKey: $('#apiKey').value.trim(),
+      textModel: $('#textModel').value.trim(),
+      imageModel: $('#imageModel').value.trim()
+    }});
+    $('#geminiMsg').innerHTML = '<span class="ok-txt">Saved</span>';
+    cfg = await api('/api/settings'); fillSettings();
+  }catch(e){ $('#geminiMsg').innerHTML = `<span class="bad-txt">${e.message}</span>`; }
+};
+$('#testGemini').onclick = async () => {
+  $('#geminiMsg').textContent='Testing…';
+  try{ await api('/api/settings/test-gemini', {method:'POST'}); $('#geminiMsg').innerHTML='<span class="ok-txt">Key works ✓</span>'; }
+  catch(e){ $('#geminiMsg').innerHTML=`<span class="bad-txt">${e.message}</span>`; }
+};
+$('#saveSb').onclick = async () => {
+  try{
+    await api('/api/settings', {method:'POST', body:{
+      supabaseUrl: $('#sbUrl').value.trim(),
+      supabaseKey: $('#sbKey').value.trim()
+    }});
+    $('#sbMsg').innerHTML = '<span class="ok-txt">Saved</span>';
+    cfg = await api('/api/settings'); fillSettings(); updateSbStatus();
+  }catch(e){ $('#sbMsg').innerHTML = `<span class="bad-txt">${e.message}</span>`; }
+};
+$('#testSb').onclick = async () => {
+  $('#sbMsg').textContent='Testing…';
+  try{ await api('/api/settings/test-supabase', {method:'POST'}); $('#sbMsg').innerHTML='<span class="ok-txt">Connected ✓ Table + bucket ready.</span>'; }
+  catch(e){ $('#sbMsg').innerHTML=`<span class="bad-txt">${e.message}</span>`; }
+};
+
+/* boot */
+(async () => {
+  if(!token) return showLogin();
+  try{ await api('/api/status'); showApp(); }catch{ showLogin(); }
+})();
+</script>
+</body>
+</html>
