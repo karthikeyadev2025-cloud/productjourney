@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Product Journey Photography — AI Jewelry Render Studio</title>
-<meta name="description" content="Cinematic automated jewelry render studio. Elevate raw catalog photos into high-fashion editorial visual campaigns.">
+<title>Product Journey — A Desire of Every Product</title>
+<meta name="description" content="Cinematic automated product photography studio. Elevate raw catalog photos of cosmetics, bags, jewelry, electronics, and apparel into high-fashion campaign assets.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -222,13 +222,14 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
   
   <section class="landing-hero animated">
     <div class="logo-container">
-      <img src="/logo.png" alt="Product Journey Photography Logo" class="logo-img" onerror="this.src='https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=120&auto=format&fit=crop&q=80'">
+      <img src="/logo.png" alt="Product Journey Logo" class="logo-img" onerror="this.src='https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=120&auto=format&fit=crop&q=80'">
     </div>
     
-    <div class="brand-badge">Luxury AI Photography Engine</div>
-    <h1 class="hero-title">Automating the <em>Product Journey</em></h1>
+    <div class="brand-badge">Premium AI Photography Studio</div>
+    <h1 class="hero-title">Product <em>J</em>ourney</h1>
+    <p class="tagline" style="color: var(--gold-soft); letter-spacing: 0.18em; font-size: 14px; margin-top: -12px; margin-bottom: 24px;">A desire of every product</p>
     <p class="hero-subtitle">
-      Transform simple raw jewelry photos into a comprehensive visual odyssey. In seconds, generate professional studio cutouts, high-fashion model campaigns, golden hour campaign assets, and editorial flat-lays.
+      Instantly elevate raw product photographs into studio-grade commercial campaign assets. Ideal for cosmetics, bags, watches, footwear, jewelry, electronics, and accessories.
     </p>
     
     <div class="hero-actions">
@@ -240,30 +241,30 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
   <!-- Narrative / Journey Steps -->
   <section class="journey-showcase animated delay-1" id="explainSection">
     <div class="section-header">
-      <h3>The Photographic Transformation</h3>
-      <p>How the AI turns a single upload into a premium multi-scene catalog</p>
+      <h3>The Photographic Journey</h3>
+      <p>How the pipeline transforms basic product shots into professional e-commerce visuals</p>
     </div>
     
     <div class="journey-grid">
       <div class="journey-card">
         <div class="journey-step-num">01</div>
         <h4>Raw Upload</h4>
-        <p>Drop a simple photo of your jewelry from any camera. The system uploads it securely to Supabase Cloud Storage.</p>
+        <p>Drop a raw photo of your product from any device. The canvas uploads instantly to Supabase Cloud Storage.</p>
       </div>
       <div class="journey-card">
         <div class="journey-step-num">02</div>
         <h4>AI Copywriting</h4>
-        <p>Gemini analyzes the image, generating luxury copy, detailed design stories, exact category tags, and metallic descriptions.</p>
+        <p>Gemini analyzes the image context, drafting design copy, categories, e-commerce tags, and precise material specifications.</p>
       </div>
       <div class="journey-card">
         <div class="journey-step-num">03</div>
         <h4>Inpainting Renders</h4>
-        <p>The image generator builds 4-6 beautiful scene variants. The jewelry stays 100% untouched; only the backdrop and environment transform.</p>
+        <p>The system renders 4-6 custom scenes. The product details, design, and labels stay 100% identical; only the background transforms.</p>
       </div>
       <div class="journey-card">
         <div class="journey-step-num">04</div>
-        <h4>Ready for Storefront</h4>
-        <p>Renders are linked in the Supabase DB and served through global CDN links. Connect WooCommerce, Shopify, or download in bulk instantly.</p>
+        <h4>Storefront Ready</h4>
+        <p>Campaign renders sync directly with Supabase DB and are served via public CDN links ready for WooCommerce or Shopify.</p>
       </div>
     </div>
   </section>
@@ -273,8 +274,8 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
 <div class="login-overlay" id="loginView">
   <div class="login-card">
     <button class="login-close" onclick="closeLogin()">✕</button>
-    <div class="brand" style="margin-bottom: 24px; text-align: center;">Product <em>J</em>ourney</div>
-    <div class="tagline" style="text-align: center; color: var(--mut); margin-bottom: 30px; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;">Render Studio Sign In</div>
+    <div class="brand" style="margin-bottom: 8px; text-align: center;">Product <em>J</em>ourney</div>
+    <div class="tagline" style="text-align: center; color: var(--gold-soft); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 25px;">A desire of every product</div>
     
     <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--mut); margin-bottom: 6px;">Email Address</label>
     <input id="email" type="email" autocomplete="username" placeholder="productjounery@gmail.com" style="margin-bottom: 16px;">
@@ -282,7 +283,7 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
     <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--mut); margin-bottom: 6px;">Secure Password</label>
     <input id="pass" type="password" autocomplete="current-password" placeholder="••••••••" style="margin-bottom: 24px;">
     
-    <button class="btn" id="loginBtn" style="width: 100%;">Sign in to Workspace</button>
+    <button class="btn" id="loginBtn" style="width: 100%;">Sign in to Studio</button>
     <div class="err" id="loginErr" style="text-align: center; margin-top: 16px;"></div>
   </div>
 </div>
@@ -292,7 +293,7 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
   <header>
     <div class="brand">
       <img src="/logo.png" alt="Logo" onerror="this.style.display='none'">
-      Product <em>J</em>ourney <span>Photography</span>
+      Product <em>J</em>ourney
     </div>
     <nav>
       <button data-tab="studio" class="on">Studio</button>
@@ -307,7 +308,7 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
     <div class="grid2">
       <div class="card">
         <h2>Upload raw queue</h2>
-        <div class="sub">Drop raw jewelry photos here — uploads go directly to Supabase Storage.</div>
+        <div class="sub">Drop raw product photos here — uploads go directly to Supabase Storage.</div>
         <div class="drop" id="drop">Click or drag images here (JPG / PNG / WEBP)</div>
         <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
         <div class="queue" id="queue"></div>
@@ -320,7 +321,7 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
         <label>Selected Scenes</label>
         <div class="chips" id="chips-scenes"></div>
 
-        <label>Extra angles (studio, jewelry only)</label>
+        <label>Extra angles (studio, product only)</label>
         <div class="chips" id="chips-angles"></div>
         <div class="hint">Adds clean studio shots from specified angles.</div>
 
