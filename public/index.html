@@ -388,7 +388,11 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
         <div class="chips" id="chips-preset"></div>
         <div class="hint">Applies to model lifestyle scene prompts.</div>
 
-        <button class="btn" id="runBtn">Process all images</button>
+        <label style="margin-top: 14px;">Export Aspect Ratio</label>
+        <div class="chips" id="chips-ratio"></div>
+        <div class="hint">Adjusts the frame aspect ratios for storefront display or banners.</div>
+
+        <button class="btn" id="runBtn" style="margin-top: 20px;">Process all images</button>
 
         <div class="prog" id="prog">
           <hr class="sep" style="margin: 20px 0; border: none; border-top: 1px solid var(--line);">
@@ -608,7 +612,7 @@ function renderChips(containerId, items, selected, multi){
 }
 
 /* studio settings state */
-let sScenes=[], sAngles=[], sGender={value:'female'}, sPreset={value:'clean'};
+let sScenes=[], sAngles=[], sGender={value:'female'}, sPreset={value:'clean'}, sRatio={value:'1:1'};
 
 async function boot(){
   try{
@@ -618,10 +622,12 @@ async function boot(){
     sAngles = [...(cfg.angles || [])];
     sGender = {value: cfg.gender || 'female'};
     sPreset = {value: cfg.preset || 'clean'};
+    sRatio  = {value: cfg.aspectRatio || '1:1'};
     renderChips('#chips-scenes',  presets.scenes,  sScenes, true);
     renderChips('#chips-angles',  presets.angles,  sAngles, true);
     renderChips('#chips-gender',  presets.genders, sGender, false);
     renderChips('#chips-preset',  presets.presets, sPreset, false);
+    renderChips('#chips-ratio',   presets.ratios,  sRatio,  false);
     fillSettings();
     loadQueue(); loadProducts();
     updateSbStatus();
@@ -633,7 +639,7 @@ async function boot(){
 async function saveCfgSilent(){
   try{
     await api('/api/settings', {method:'POST', body:{
-      scenes: sScenes, angles: sAngles, gender: sGender.value, preset: sPreset.value
+      scenes: sScenes, angles: sAngles, gender: sGender.value, preset: sPreset.value, aspectRatio: sRatio.value
     }});
   }catch{}
 }
@@ -749,7 +755,7 @@ $('#runBtn').onclick = async () => {
   if(!sScenes.length){ toast('Pick at least one scene'); return; }
   try{
     await api('/api/process', {method:'POST', body:{
-      scenes: sScenes, angles: sAngles, gender: sGender.value, preset: sPreset.value
+      scenes: sScenes, angles: sAngles, gender: sGender.value, preset: sPreset.value, aspectRatio: sRatio.value
     }});
     $('#prog').classList.add('show');
     startPolling();

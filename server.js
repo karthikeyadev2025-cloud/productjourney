@@ -37,7 +37,8 @@ async function loadConfig(store) {
     scenes:       ['marble', 'model', 'golden', 'silk'],
     angles:       [],
     gender:       'female',
-    preset:       'clean'
+    preset:       'clean',
+    aspectRatio:  '1:1'
   };
 
   if (!store.enabled) return defaults;
@@ -52,6 +53,15 @@ async function loadConfig(store) {
     if (textModel.includes('2.5-flash') || textModel.includes('gemini-flash-latest') || !textModel) {
       textModel = 'gemini-3.5-flash';
     }
+    
+    let presetVal = dbSettings.preset || defaults.preset;
+    let aspectRatio = '1:1';
+    if (presetVal.includes('_aspectRatio_')) {
+      const parts = presetVal.split('_aspectRatio_');
+      presetVal = parts[0];
+      aspectRatio = parts[1] || '1:1';
+    }
+
     return {
       geminiApiKey: dbSettings.gemini_api_key || defaults.geminiApiKey,
       supabaseUrl:  dbSettings.supabase_url || defaults.supabaseUrl,
@@ -61,7 +71,8 @@ async function loadConfig(store) {
       scenes:       dbSettings.scenes?.length ? dbSettings.scenes : defaults.scenes,
       angles:       dbSettings.angles || defaults.angles,
       gender:       dbSettings.gender || defaults.gender,
-      preset:       dbSettings.preset || defaults.preset
+      preset:       presetVal,
+      aspectRatio:  aspectRatio
     };
   } catch {
     return defaults;
@@ -78,7 +89,13 @@ async function saveConfig(store, updates) {
   if (updates.scenes !== undefined)      mapped.scenes = updates.scenes;
   if (updates.angles !== undefined)      mapped.angles = updates.angles;
   if (updates.gender !== undefined)      mapped.gender = updates.gender;
-  if (updates.preset !== undefined)      mapped.preset = updates.preset;
+  
+  if (updates.preset !== undefined || updates.aspectRatio !== undefined) {
+    const cfg = await loadConfig(store);
+    const pVal = updates.preset !== undefined ? updates.preset : cfg.preset;
+    const rVal = updates.aspectRatio !== undefined ? updates.aspectRatio : cfg.aspectRatio;
+    mapped.preset = `${pVal}_aspectRatio_${rVal}`;
+  }
   await store.saveSettings(mapped);
 }
 
@@ -143,7 +160,12 @@ app.get('/api/presets', auth, (req, res) => {
     scenes:  SCENES.map(s => ({ key: s.key, label: s.label, needsModel: s.needsModel })),
     genders: GENDERS.map(g => ({ key: g.key, label: g.label })),
     presets: PRESETS.map(p => ({ key: p.key, label: p.label })),
-    angles:  ANGLES.map(a => ({ key: a.key, label: a.label }))
+    angles:  ANGLES.map(a => ({ key: a.key, label: a.label })),
+    ratios: [
+      { key: '1:1', label: '1:1 Square' },
+      { key: '16:9', label: '16:9 Banner' },
+      { key: '4:5', label: '4:5 Storefront' }
+    ]
   });
 });
 
