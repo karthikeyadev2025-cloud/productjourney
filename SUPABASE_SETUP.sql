@@ -59,6 +59,9 @@ create table if not exists public.jobs (
   results       jsonb default '[]',
   errors        jsonb default '[]',
   "perImage"    jsonb default '{}',   -- per-file status map for Batch Command Center
+  lease_owner       text,            -- exclusive processing lock owner (prevents double-processing races)
+  lease_expires_at  timestamptz,     -- self-expiring lease, so a crashed/killed invocation can't wedge the lock forever
+  config_snapshot   jsonb,           -- creative settings frozen at batch-start time (scenes/angles/gender/preset/aspectRatio/watermarkUrl/imageLimit)
   created_at    timestamptz default now(),
   updated_at    timestamptz default now()
 );
@@ -76,18 +79,26 @@ on conflict (id) do nothing;
 -- ============================================================
 -- 4. Storage Buckets Setup
 -- ============================================================
--- Insert the public buckets directly into storage schema
+-- 'jewelry' (rendered catalog output) is public — the storefront links
+-- directly to these images.
+-- 'jewelry-input' (raw, unprocessed customer/client photos) is PRIVATE —
+-- the app only ever accesses it through the authenticated admin API,
+-- which uses short-lived signed URLs, never a public link.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values 
   ('jewelry', 'jewelry', true, null, null),
-  ('jewelry-input', 'jewelry-input', true, null, null)
+  ('jewelry-input', 'jewelry-input', false, null, null)
 on conflict (id) do nothing;
 
--- Drop and recreate access policies to allow public reading of images
+-- If this project was created before this update, the bucket may already
+-- exist as public — this flips it to private for existing installs too.
+update storage.buckets set public = false where id = 'jewelry-input';
+
+-- Public read applies ONLY to the output bucket now.
 drop policy if exists "Public Access to Jewelry Images" on storage.objects;
 create policy "Public Access to Jewelry Images"
 on storage.objects for select
-using ( bucket_id in ('jewelry', 'jewelry-input') );
+using ( bucket_id = 'jewelry' );
 
 -- ============================================================
 -- 5. Migration: Add perImage column to existing jobs table
@@ -95,3 +106,15 @@ using ( bucket_id in ('jewelry', 'jewelry-input') );
 -- ============================================================
 alter table public.jobs
   add column if not exists "perImage" jsonb default '{}';
+
+-- ============================================================
+-- 6. Migration: Add processing-lease + config-snapshot columns
+--    Run this if your jobs table was created before this update.
+--    These close a race condition where a page reload, a second open
+--    tab, or a client retry after a timeout could run the render
+--    pipeline twice concurrently against the same file.
+-- ============================================================
+alter table public.jobs
+  add column if not exists lease_owner text,
+  add column if not exists lease_expires_at timestamptz,
+  add column if not exists config_snapshot jsonb;

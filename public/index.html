@@ -701,6 +701,21 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:14px">
+      <div class="row" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div class="row" style="gap:10px; flex-wrap:wrap;">
+          <input id="pSearch" type="text" placeholder="Search product name…" style="min-width:220px;">
+          <select id="pCategoryFilter"><option value="">All categories</option></select>
+        </div>
+        <div class="row" style="gap:10px; align-items:center;">
+          <label class="row" style="gap:6px; align-items:center; font-size:13px; color: var(--mut);">
+            <input type="checkbox" id="pSelectAll"> Select all
+          </label>
+          <button class="btn small ghost" id="pBulkDeleteBtn" style="border-color: var(--bad); color: var(--bad); display:none;">Delete Selected (<span id="pSelectedCount">0</span>)</button>
+        </div>
+      </div>
+    </div>
+
     <div class="pgrid" id="pgrid"></div>
     <div class="empty" id="pEmpty" hidden>Nothing here yet — run a batch from the Studio tab.</div>
   </section>
@@ -796,6 +811,7 @@ h2 { font-family: var(--disp); font-size: 26px; font-weight: 500; color: var(--g
     <div class="row" style="margin-top:20px; justify-content: space-between; width: 100%;">
       <div class="row">
         <button class="btn small" id="mDownloadImg">Download Current Image</button>
+        <button class="btn small ghost" id="mRegenImg" style="display: none;">Regenerate This Image</button>
         <button class="btn small ghost" id="mDeleteImg" style="border-color: var(--bad); color: var(--bad); display: none;">Delete Selected Image</button>
         <button class="btn small ghost" id="mZip">Download All as ZIP</button>
       </div>
@@ -816,6 +832,14 @@ let customNamesState = {};
 let activeProductInModal = null;
 
 const $ = s => document.querySelector(s);
+// Product fields (name, tags, category, etc.) come from an LLM reading an
+// uploaded photo, or from an admin-entered custom name — never trust them
+// as safe HTML. Escape before any innerHTML interpolation.
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
 let toastTimer = null;
 function toast(msg, ms=2600){
   const t=$('#toast');
@@ -1335,60 +1359,134 @@ function renderBCC(j) {
     lb.innerHTML = logs.map(l => {
       const cls = l.level === 'error' ? 'bcc-log-error' : l.level === 'warn' ? 'bcc-log-warn' : 'bcc-log-info';
       const time = l.t ? new Date(l.t).toLocaleTimeString() : '';
-      return `<div class="${cls}"><span style="color:var(--mut);">[${time}]</span> ${l.msg}</div>`;
+      return `<div class="${cls}"><span style="color:var(--mut);">[${time}]</span> ${escapeHtml(l.msg)}</div>`;
     }).join('');
     lb.scrollTop = lb.scrollHeight;
   }
 }
 
 /* products view loader */
+let allProducts = [];
+let selectedProductIds = new Set();
+
 async function loadProducts(){
   const d = await api('/api/products');
-  
-  // Calculate and update dashboard stats
-  $('#stat-total-campaigns').textContent = d.products.length;
+  allProducts = d.products || [];
+
+  // Calculate and update dashboard stats (unaffected by search/filter)
+  $('#stat-total-campaigns').textContent = allProducts.length;
   let totalRenders = 0;
-  d.products.forEach(p => {
+  allProducts.forEach(p => {
     totalRenders += (p.images || []).filter(i => !/original/i.test(i.name) && i.url).length;
   });
   $('#stat-total-renders').textContent = totalRenders;
 
+  // Populate the category dropdown from whatever categories actually exist
+  const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+  const catSelect = $('#pCategoryFilter');
+  const prevCat = catSelect.value;
+  catSelect.innerHTML = '<option value="">All categories</option>' +
+    categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  if (categories.includes(prevCat)) catSelect.value = prevCat;
+
+  renderProductGrid();
+}
+
+function renderProductGrid(){
+  const searchTerm = ($('#pSearch').value || '').trim().toLowerCase();
+  const categoryFilter = $('#pCategoryFilter').value;
+
+  const filtered = allProducts.filter(p => {
+    if (categoryFilter && p.category !== categoryFilter) return false;
+    if (searchTerm && !(p.product_name || p.folder || '').toLowerCase().includes(searchTerm)) return false;
+    return true;
+  });
+
+  // Selections that no longer match the current filter/list stay selected
+  // in the underlying Set (so switching filters doesn't silently lose a
+  // bulk-delete selection), but the toolbar only counts what's visible.
   const g = $('#pgrid'); g.innerHTML='';
-  $('#pEmpty').hidden = d.products.length > 0;
-  for(const p of d.products){
+  $('#pEmpty').hidden = filtered.length > 0;
+  for(const p of filtered){
     const heroImg = (p.images || []).find(i => !/original/i.test(i.name) && i.url);
     const heroUrl = heroImg?.url || '';
-    const el = document.createElement('div'); el.className='pcard';
+    const name = escapeHtml(p.product_name || p.folder);
+    const el = document.createElement('div'); el.className='pcard'; el.style.position='relative';
     el.innerHTML = `
-      <div class="hero"><img alt="${p.product_name || p.folder}" src="${heroUrl}"></div>
+      <label style="position:absolute; top:8px; left:8px; z-index:2; background:rgba(0,0,0,0.55); border-radius:4px; padding:3px 6px;">
+        <input type="checkbox" class="p-select" data-id="${escapeHtml(p.id)}">
+      </label>
+      <div class="hero"><img alt="${name}" src="${heroUrl}"></div>
       <div class="body">
-        <div class="pname">${p.product_name || p.folder}</div>
-        <div class="pshort">${p.short_description || ''}</div>
+        <div class="pname">${name}</div>
+        <div class="pshort">${escapeHtml(p.short_description || '')}</div>
         <div class="thumbs"></div>
         <div class="actions">
           <button class="btn small" data-a="open">View Details</button>
         </div>
       </div>`;
     g.appendChild(el);
+
+    const cb = el.querySelector('.p-select');
+    cb.checked = selectedProductIds.has(p.id);
+    cb.onchange = () => {
+      if (cb.checked) selectedProductIds.add(p.id); else selectedProductIds.delete(p.id);
+      updateBulkDeleteToolbar();
+    };
+
     const th = el.querySelector('.thumbs');
     (p.images || []).filter(i => !/original/i.test(i.name) && i.url).slice(0,6).forEach(img => {
       const im = document.createElement('img');
       im.src = img.url || '';
-      im.alt = img.name;
+      im.alt = escapeHtml(img.name);
       th.appendChild(im);
     });
     el.querySelector('[data-a=open]').onclick = () => openModal(p);
   }
+  updateBulkDeleteToolbar();
 }
+
+function updateBulkDeleteToolbar(){
+  const count = selectedProductIds.size;
+  $('#pSelectedCount').textContent = count;
+  $('#pBulkDeleteBtn').style.display = count > 0 ? 'inline-flex' : 'none';
+}
+
+$('#pSearch').oninput = () => renderProductGrid();
+$('#pCategoryFilter').onchange = () => renderProductGrid();
+
+$('#pSelectAll').onchange = (e) => {
+  const visibleIds = [...document.querySelectorAll('.p-select')].map(cb => cb.dataset.id);
+  if (e.target.checked) visibleIds.forEach(id => selectedProductIds.add(id));
+  else visibleIds.forEach(id => selectedProductIds.delete(id));
+  document.querySelectorAll('.p-select').forEach(cb => cb.checked = e.target.checked);
+  updateBulkDeleteToolbar();
+};
+
+$('#pBulkDeleteBtn').onclick = async () => {
+  const ids = [...selectedProductIds];
+  if (!ids.length) return;
+  if (!confirm(`Permanently delete ${ids.length} selected product(s)? This cannot be undone.`)) return;
+  try {
+    const res = await api('/api/products/bulk-delete', { method: 'POST', body: { ids } });
+    selectedProductIds.clear();
+    $('#pSelectAll').checked = false;
+    toast(`Deleted ${res.deleted.length} product(s)` + (res.failed?.length ? ` (${res.failed.length} failed)` : ''));
+    loadProducts();
+  } catch (e) {
+    toast('Bulk delete failed: ' + e.message);
+  }
+};
+
 
 function openModal(p){
   activeProductInModal = p;
   $('#mName').textContent = p.product_name || p.folder;
-  const tags = (p.tags || []).map(t => `<span class="pill">${t}</span>`).join('');
+  const tags = (p.tags || []).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join('');
   const validImagesCount = (p.images || []).filter(i => i.url).length;
-  $('#mPills').innerHTML = `<span class="pill">${p.folder}</span><span class="pill">${validImagesCount} files</span>` +
-    (p.category ? `<span class="pill">${p.category}</span>` : '') +
-    (p.materials ? `<span class="pill">${p.materials}</span>` : '') + tags;
+  $('#mPills').innerHTML = `<span class="pill">${escapeHtml(p.folder)}</span><span class="pill">${validImagesCount} files</span>` +
+    (p.category ? `<span class="pill">${escapeHtml(p.category)}</span>` : '') +
+    (p.materials ? `<span class="pill">${escapeHtml(p.materials)}</span>` : '') + tags;
   
   // Render separated copywriting fields with copy triggers
   const fields = [
@@ -1405,10 +1503,10 @@ function openModal(p){
     const el = document.createElement('div'); el.className = 'copy-field';
     el.innerHTML = `
       <label>
-        <span>${f.label}</span>
+        <span>${escapeHtml(f.label)}</span>
         <button class="copy-btn">Copy</button>
       </label>
-      <div class="val">${f.val || '—'}</div>
+      <div class="val">${escapeHtml(f.val) || '—'}</div>
     `;
     el.querySelector('.copy-btn').onclick = () => {
       navigator.clipboard.writeText(f.val).then(() => {
@@ -1449,8 +1547,10 @@ function openModal(p){
   const updateDeleteButtonState = (name) => {
     if (!name || /original/i.test(name)) {
       $('#mDeleteImg').style.display = 'none';
+      $('#mRegenImg').style.display = 'none';
     } else {
       $('#mDeleteImg').style.display = 'inline-flex';
+      $('#mRegenImg').style.display = 'inline-flex';
     }
   };
 
@@ -1546,6 +1646,32 @@ function openModal(p){
     closeModal(); loadProducts(); toast('Product deleted');
   };
 
+  $('#mRegenImg').onclick = async () => {
+    if (!activeProductInModal) return;
+    const name = $('#mImg').dataset.name;
+    if (!name) return;
+    if (!confirm(`Regenerate this image ("${name}")? This replaces it with a fresh render using the current Settings.`)) return;
+
+    const btn = $('#mRegenImg');
+    const oldText = btn.textContent;
+    btn.textContent = 'Regenerating…';
+    btn.disabled = true;
+    try {
+      const res = await api(`/api/products/${encodeURIComponent(activeProductInModal.id)}/regenerate`, {
+        method: 'POST', body: { name }
+      });
+      toast('Image regenerated');
+      activeProductInModal.images = res.images;
+      openModal(activeProductInModal);
+      loadProducts();
+    } catch (e) {
+      toast('Regenerate failed: ' + e.message);
+    } finally {
+      btn.textContent = oldText;
+      btn.disabled = false;
+    }
+  };
+
   $('#mDeleteImg').onclick = async () => {
     if (!activeProductInModal) return;
     const name = $('#mImg').dataset.name;
@@ -1568,7 +1694,10 @@ function openModal(p){
 function closeModal(){ $('#modal').classList.remove('show'); }
 $('#modal').addEventListener('click', e => { if(e.target === $('#modal')) closeModal(); });
 
-$('#csvBtn').onclick = () => { window.open('/api/export/csv', '_blank'); };
+$('#csvBtn').onclick = async () => {
+  try { await api('/api/export/csv'); }
+  catch(e) { toast('Export failed: ' + e.message); }
+};
 
 /* settings management */
 function fillSettings(){
